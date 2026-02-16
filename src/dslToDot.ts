@@ -88,8 +88,8 @@ function generateContextDiagram(workspace: ParsedWorkspace, _scope: string | und
 function addRelationships(relationships: ParsedRelationship[], lines: string[]): void {
     for (const rel of relationships) {
         const labelParts: string[] = [];
-        if (rel.description) labelParts.push(rel.description);
-        if (rel.technology) labelParts.push(`[${rel.technology}]`);
+        if (rel.description) labelParts.push(escapeDotLabel(rel.description));
+        if (rel.technology) labelParts.push(`[${escapeDotLabel(rel.technology)}]`);
         const label = labelParts.length > 0 ? ` [label="${labelParts.join('\\n')}"]` : '';
         lines.push(`    ${sanitizeId(rel.source)} -> ${sanitizeId(rel.target)}${label}`);
     }
@@ -101,6 +101,10 @@ function htmlLabel(name: string, subtitle: string): string {
 
 function sanitizeId(id: string): string {
     return id.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+function escapeDotLabel(text: string): string {
+    return text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 function escapeHtml(text: string): string {

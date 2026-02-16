@@ -103,6 +103,24 @@ suite('DOT Generation', () => {
 		});
 	});
 
+	suite('special characters in labels', () => {
+		test('escapes backslashes in relationship description', async () => {
+			const content =
+				'workspace "Test" {\n' +
+				'  model {\n' +
+				'    u = person "User"\n' +
+				'    s = softwareSystem "System"\n' +
+				'    u -> s "path\\to\\file"\n' +
+				'  }\n' +
+				'}\n';
+			const doc = await openDslContent(content);
+			const results = convertToDot(doc);
+			// Parser captures: path\to\file
+			// escapeDotLabel should produce: path\\to\\file
+			assert.ok(results[0].code.includes('path\\\\to\\\\file'), 'backslashes should be escaped in DOT label');
+		});
+	});
+
 	suite('no views', () => {
 		test('generates default diagram when no views defined', async () => {
 			const content = [
