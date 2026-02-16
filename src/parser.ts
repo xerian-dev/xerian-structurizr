@@ -68,6 +68,7 @@ export function parseDocument(document: vscode.TextDocument): ParsedWorkspace {
     const relationships: ParsedRelationship[] = [];
     const views: ParsedView[] = [];
     let workspaceName: string | undefined;
+    const contextStack: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -78,52 +79,85 @@ export function parseDocument(document: vscode.TextDocument): ParsedWorkspace {
             continue;
         }
 
-        // Workspace name
-        const workspaceMatch = trimmed.match(/^workspace\s+"([^"]*)"/i);
-        if (workspaceMatch) {
-            workspaceName = workspaceMatch[1];
-            continue;
+        // Track block keywords before counting braces
+        if (trimmed.match(/^workspace\b/i)) {
+            const workspaceMatch = trimmed.match(/^workspace\s+"([^"]*)"/i);
+            if (workspaceMatch) {
+                workspaceName = workspaceMatch[1];
+            }
+            contextStack.push('workspace');
+        } else if (trimmed.match(/^model\b/i)) {
+            contextStack.push('model');
+        } else if (trimmed.match(/^views\b/i)) {
+            contextStack.push('views');
+        } else if (trimmed.match(/^styles\b/i)) {
+            contextStack.push('styles');
+        } else if (trimmed.match(/^(element|relationship)\s+"/i) && currentContext(contextStack) === 'styles') {
+            contextStack.push('style-rule');
+        } else {
+            const ctx = currentContext(contextStack);
+
+            // Inside model (or nested element blocks): match elements and relationships
+            if (ctx === 'model' || ctx === 'element') {
+                const elementMatch = trimmed.match(ELEMENT_PATTERN);
+                if (elementMatch) {
+                    if (trimmed.includes('{')) {
+                        contextStack.push('element');
+                    }
+                    elements.push({
+                        identifier: elementMatch[1] || elementMatch[3]?.replace(/\s+/g, '') || '',
+                        type: ELEMENT_TYPE_MAP[elementMatch[2].toLowerCase()] || 'group',
+                        name: elementMatch[3] || '',
+                        line: i,
+                        children: [],
+                    });
+                } else {
+                    const relMatch = trimmed.match(RELATIONSHIP_PATTERN);
+                    if (relMatch) {
+                        relationships.push({
+                            source: relMatch[1],
+                            target: relMatch[2],
+                            description: relMatch[3],
+                            technology: relMatch[4],
+                            line: i,
+                        });
+                    }
+                }
+            }
+
+            // Inside views: match view declarations
+            if (ctx === 'views') {
+                const viewMatch = trimmed.match(VIEW_PATTERN);
+                if (viewMatch) {
+                    contextStack.push('view');
+                    views.push({
+                        type: VIEW_TYPE_MAP[viewMatch[1].toLowerCase()] || 'custom',
+                        scope: viewMatch[2],
+                        key: viewMatch[3],
+                        line: i,
+                    });
+                }
+            }
         }
 
-        // Elements
-        const elementMatch = trimmed.match(ELEMENT_PATTERN);
-        if (elementMatch) {
-            elements.push({
-                identifier: elementMatch[1] || elementMatch[3]?.replace(/\s+/g, '') || '',
-                type: ELEMENT_TYPE_MAP[elementMatch[2].toLowerCase()] || 'group',
-                name: elementMatch[3] || '',
-                line: i,
-                children: [],
-            });
-            continue;
-        }
-
-        // Relationships
-        const relMatch = trimmed.match(RELATIONSHIP_PATTERN);
-        if (relMatch) {
-            relationships.push({
-                source: relMatch[1],
-                target: relMatch[2],
-                description: relMatch[3],
-                technology: relMatch[4],
-                line: i,
-            });
-            continue;
-        }
-
-        // Views
-        const viewMatch = trimmed.match(VIEW_PATTERN);
-        if (viewMatch) {
-            views.push({
-                type: VIEW_TYPE_MAP[viewMatch[1].toLowerCase()] || 'custom',
-                scope: viewMatch[2],
-                key: viewMatch[3],
-                line: i,
-            });
+        // Count braces to manage context stack
+        for (const ch of line) {
+            if (ch === '{') {
+                // Block keywords already pushed their context above;
+                // for braces on non-keyword lines, we don't push extra context
+            } else if (ch === '}') {
+                if (contextStack.length > 0) {
+                    contextStack.pop();
+                }
+            }
         }
     }
 
     return { name: workspaceName, elements, relationships, views };
+}
+
+function currentContext(stack: string[]): string | undefined {
+    return stack[stack.length - 1];
 }
 
 export function getBlockContext(document: vscode.TextDocument, position: vscode.Position): BlockContext {
