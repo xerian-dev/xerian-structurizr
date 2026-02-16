@@ -21,6 +21,7 @@
           "structurizr"
         ],
         "extensions": [
+          ".strz",
           ".dsl"
         ],
         "configuration": "./language-configuration.json"
