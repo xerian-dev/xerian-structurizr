@@ -1,0 +1,210 @@
+{
+  "Workspace": {
+    "prefix": "workspace",
+    "body": [
+      "workspace \"${1:Name}\" \"${2:Description}\" {",
+      "",
+      "\tmodel {",
+      "\t\t$0",
+      "\t}",
+      "",
+      "\tviews {",
+      "\t\tstyles {",
+      "\t\t\telement \"Person\" {",
+      "\t\t\t\tshape Person",
+      "\t\t\t}",
+      "\t\t}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a new Structurizr workspace"
+  },
+  "Person": {
+    "prefix": "person",
+    "body": [
+      "${1:identifier} = person \"${2:Name}\" \"${3:Description}\""
+    ],
+    "description": "Define a person"
+  },
+  "Software System": {
+    "prefix": "softwareSystem",
+    "body": [
+      "${1:identifier} = softwareSystem \"${2:Name}\" \"${3:Description}\" {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a software system"
+  },
+  "Software System (inline)": {
+    "prefix": "softwareSystemInline",
+    "body": [
+      "${1:identifier} = softwareSystem \"${2:Name}\" \"${3:Description}\""
+    ],
+    "description": "Define a software system (single line)"
+  },
+  "Container": {
+    "prefix": "container",
+    "body": [
+      "${1:identifier} = container \"${2:Name}\" \"${3:Description}\" \"${4:Technology}\" {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a container"
+  },
+  "Container (inline)": {
+    "prefix": "containerInline",
+    "body": [
+      "${1:identifier} = container \"${2:Name}\" \"${3:Description}\" \"${4:Technology}\""
+    ],
+    "description": "Define a container (single line)"
+  },
+  "Component": {
+    "prefix": "component",
+    "body": [
+      "${1:identifier} = component \"${2:Name}\" \"${3:Description}\" \"${4:Technology}\""
+    ],
+    "description": "Define a component"
+  },
+  "Relationship": {
+    "prefix": "rel",
+    "body": [
+      "${1:source} -> ${2:target} \"${3:Description}\""
+    ],
+    "description": "Define a relationship between elements"
+  },
+  "Relationship with Technology": {
+    "prefix": "reltech",
+    "body": [
+      "${1:source} -> ${2:target} \"${3:Description}\" \"${4:Technology}\""
+    ],
+    "description": "Define a relationship with technology"
+  },
+  "Deployment Environment": {
+    "prefix": "deploymentEnvironment",
+    "body": [
+      "deploymentEnvironment \"${1:Name}\" {",
+      "\tdeploymentNode \"${2:Node Name}\" \"${3:Description}\" \"${4:Technology}\" {",
+      "\t\t$0",
+      "\t}",
+      "}"
+    ],
+    "description": "Define a deployment environment"
+  },
+  "Deployment Node": {
+    "prefix": "deploymentNode",
+    "body": [
+      "deploymentNode \"${1:Name}\" \"${2:Description}\" \"${3:Technology}\" {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a deployment node"
+  },
+  "System Context View": {
+    "prefix": "systemContext",
+    "body": [
+      "systemContext ${1:softwareSystemIdentifier} \"${2:Key}\" {",
+      "\tinclude *",
+      "\tautoLayout lr",
+      "}"
+    ],
+    "description": "Create a system context view"
+  },
+  "System Landscape View": {
+    "prefix": "systemLandscape",
+    "body": [
+      "systemLandscape \"${1:Key}\" {",
+      "\tinclude *",
+      "\tautoLayout lr",
+      "}"
+    ],
+    "description": "Create a system landscape view"
+  },
+  "Container View": {
+    "prefix": "containerView",
+    "body": [
+      "container ${1:softwareSystemIdentifier} \"${2:Key}\" {",
+      "\tinclude *",
+      "\tautoLayout lr",
+      "}"
+    ],
+    "description": "Create a container view"
+  },
+  "Component View": {
+    "prefix": "componentView",
+    "body": [
+      "component ${1:containerIdentifier} \"${2:Key}\" {",
+      "\tinclude *",
+      "\tautoLayout",
+      "}"
+    ],
+    "description": "Create a component view"
+  },
+  "Deployment View": {
+    "prefix": "deploymentView",
+    "body": [
+      "deployment ${1:softwareSystemIdentifier} \"${2:Environment}\" \"${3:Key}\" {",
+      "\tinclude *",
+      "\tautoLayout",
+      "}"
+    ],
+    "description": "Create a deployment view"
+  },
+  "Dynamic View": {
+    "prefix": "dynamicView",
+    "body": [
+      "dynamic ${1:scope} \"${2:Key}\" {",
+      "\t$0",
+      "\tautoLayout lr",
+      "}"
+    ],
+    "description": "Create a dynamic view"
+  },
+  "Styles Block": {
+    "prefix": "styles",
+    "body": [
+      "styles {",
+      "\telement \"${1:Tag}\" {",
+      "\t\t$0",
+      "\t}",
+      "}"
+    ],
+    "description": "Define a styles block"
+  },
+  "Element Style": {
+    "prefix": "elementStyle",
+    "body": [
+      "element \"${1:Tag}\" {",
+      "\tshape ${2|Box,RoundedBox,Circle,Cylinder,Ellipse,Hexagon,Diamond,Person,Robot,Folder,WebBrowser,MobileDevicePortrait,Pipe,Component|}",
+      "\tbackground #${3:438DD5}",
+      "\tcolor #${4:ffffff}",
+      "}"
+    ],
+    "description": "Define an element style"
+  },
+  "Relationship Style": {
+    "prefix": "relationshipStyle",
+    "body": [
+      "relationship \"${1:Tag}\" {",
+      "\tthickness ${2:2}",
+      "\trouting ${3|Direct,Orthogonal,Curved|}",
+      "}"
+    ],
+    "description": "Define a relationship style"
+  },
+  "Group": {
+    "prefix": "group",
+    "body": [
+      "group \"${1:Name}\" {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Define a group of elements"
+  },
+  "Tags": {
+    "prefix": "tags",
+    "body": [
+      "tags \"${1:Tag}\""
+    ],
+    "description": "Add tags to an element"
+  }
+}

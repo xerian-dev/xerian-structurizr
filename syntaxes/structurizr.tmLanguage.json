@@ -1,0 +1,136 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Structurizr DSL",
+  "scopeName": "source.structurizr",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#directives" },
+    { "include": "#operators" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.structurizr",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.structurizr",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.structurizr",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.structurizr",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.structurizr",
+          "match": "\\b(!identifiers|!impliedRelationships|!include|!docs|!adrs|!constant|!var|!ref|!plugin|!script|!extend)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.relationship.structurizr",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.assignment.structurizr",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.wildcard.structurizr",
+          "match": "\\*"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.structurizr",
+          "match": "\\b(workspace|model|views|extends)\\b"
+        },
+        {
+          "name": "keyword.other.element.structurizr",
+          "match": "\\b(person|softwareSystem|softwaresystem|container|component|deploymentEnvironment|deploymentNode|deploymentGroup|infrastructureNode|softwareSystemInstance|containerInstance|group|element)\\b"
+        },
+        {
+          "name": "keyword.other.view.structurizr",
+          "match": "\\b(systemContext|systemLandscape|dynamic|deployment|filtered|custom|image)\\b"
+        },
+        {
+          "name": "keyword.other.view-content.structurizr",
+          "match": "\\b(include|exclude|autoLayout|autolayout|animation|title|description|properties)\\b"
+        },
+        {
+          "name": "keyword.other.style.structurizr",
+          "match": "\\b(styles|theme|themes|branding|terminology|configuration|users)\\b"
+        },
+        {
+          "name": "keyword.other.style-property.structurizr",
+          "match": "\\b(shape|icon|width|height|background|color|colour|stroke|strokeWidth|fontSize|border|opacity|metadata|routing|position|tag|tags|technology|url|instances|healthCheck|default)\\b"
+        },
+        {
+          "name": "keyword.other.relationship.structurizr",
+          "match": "\\b(relationship)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.shape.structurizr",
+          "match": "\\b(Box|RoundedBox|Circle|Cylinder|Ellipse|Hexagon|Diamond|Pipe|Person|Robot|Folder|WebBrowser|MobileDevicePortrait|MobileDeviceLandscape|Component)\\b"
+        },
+        {
+          "name": "constant.language.direction.structurizr",
+          "match": "\\b(lr|rl|tb|bt)\\b"
+        },
+        {
+          "name": "constant.language.routing.structurizr",
+          "match": "\\b(Direct|Orthogonal|Curved)\\b"
+        },
+        {
+          "name": "constant.language.border.structurizr",
+          "match": "\\b(Solid|Dashed|Dotted)\\b"
+        },
+        {
+          "name": "constant.numeric.structurizr",
+          "match": "\\b[0-9]+\\b"
+        },
+        {
+          "name": "constant.other.color.structurizr",
+          "match": "#[0-9a-fA-F]{6}\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.identifier.structurizr",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}
