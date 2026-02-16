@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { convertToMermaid } from './dslToMermaid';
+import { convertToDot } from './dslToDot';
 
 export class PreviewPanel {
     public static currentPanel: PreviewPanel | undefined;
@@ -55,21 +55,21 @@ export class PreviewPanel {
     }
 
     public update(document: vscode.TextDocument): void {
-        const results = convertToMermaid(document);
+        const results = convertToDot(document);
         if (results.length === 0) return;
 
         const safeIndex = Math.min(this.currentViewIndex, results.length - 1);
-        const mermaidCode = results[safeIndex].code;
+        const dotCode = results[safeIndex].code;
 
         const viewOptions = results.map((r, i) => ({
             name: r.viewName,
             selected: i === safeIndex,
         }));
 
-        this.panel.webview.html = this.getHtml(mermaidCode, viewOptions);
+        this.panel.webview.html = this.getHtml(dotCode, viewOptions);
     }
 
-    private getHtml(mermaidCode: string, views: { name: string; selected: boolean }[]): string {
+    private getHtml(dotCode: string, views: { name: string; selected: boolean }[]): string {
         const nonce = getNonce();
 
         const viewSelector = views.length > 1
@@ -86,7 +86,7 @@ export class PreviewPanel {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; style-src 'nonce-${nonce}'; img-src data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'nonce-${nonce}'; img-src data:;">
     <style nonce="${nonce}">
         body {
             margin: 0;
@@ -120,10 +120,7 @@ export class PreviewPanel {
             justify-content: center;
             overflow: auto;
         }
-        .mermaid {
-            max-width: 100%;
-        }
-        .mermaid svg {
+        #diagram-container svg {
             max-width: 100%;
             height: auto;
         }
@@ -136,31 +133,21 @@ export class PreviewPanel {
 </head>
 <body>
     ${viewSelector}
-    <div id="diagram-container">
-        <pre class="mermaid">
-${escapeHtml(mermaidCode)}
-        </pre>
-    </div>
+    <div id="diagram-container"></div>
     <div id="error"></div>
 
     <script nonce="${nonce}" type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        import * as Viz from 'https://cdn.jsdelivr.net/npm/@viz-js/viz@3/dist/viz.js';
 
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: document.body.classList.contains('vscode-light') ? 'default' : 'dark',
-            c4: {
-                diagramMarginY: 20,
-            },
-            securityLevel: 'strict',
-        });
-
-        // Detect VS Code theme
-        const isDark = document.body.getAttribute('data-vscode-theme-kind')?.includes('dark')
-            ?? window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        if (!isDark) {
-            mermaid.initialize({ theme: 'default' });
+        try {
+            const viz = await Viz.instance();
+            const dotCode = ${JSON.stringify(dotCode)};
+            const svg = viz.renderSVGElement(dotCode);
+            document.getElementById('diagram-container').appendChild(svg);
+        } catch (err) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = 'Failed to render diagram: ' + err.message;
+            errorEl.style.display = 'block';
         }
     </script>
 

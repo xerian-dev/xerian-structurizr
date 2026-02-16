@@ -22,6 +22,7 @@ export interface ParsedView {
     type: 'systemLandscape' | 'systemContext' | 'container' | 'component' | 'deployment' | 'dynamic' | 'filtered' | 'custom';
     scope?: string;
     key?: string;
+    autoLayout?: 'tb' | 'bt' | 'lr' | 'rl';
     line: number;
 }
 
@@ -136,6 +137,14 @@ export function parseDocument(document: vscode.TextDocument): ParsedWorkspace {
                         key: viewMatch[3],
                         line: i,
                     });
+                }
+            }
+
+            // Inside a view: parse autoLayout
+            if (ctx === 'view') {
+                const layoutMatch = trimmed.match(/^autolayout\s+(tb|bt|lr|rl)\b/i);
+                if (layoutMatch && views.length > 0) {
+                    views[views.length - 1].autoLayout = layoutMatch[1].toLowerCase() as ParsedView['autoLayout'];
                 }
             }
         }
