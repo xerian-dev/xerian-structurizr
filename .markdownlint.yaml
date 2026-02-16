@@ -1,0 +1,65 @@
+# Markdownlint configuration for AFT Installation project
+# This file configures markdown linting rules to ensure consistent documentation quality
+
+# MD040: Fenced code blocks should have a language specified
+# Disabled to allow code blocks without language specification for flexibility
+MD040: false
+
+# MD013: Line length - Completely disabled for technical documentation
+# Technical docs often need longer lines for commands, URLs, and detailed explanations
+MD013: false
+
+# MD036: Emphasis used instead of a heading
+# Disabled to allow bold text for callouts and important notes
+MD036: false
+
+# MD033: Inline HTML - Allow specific HTML elements for enhanced formatting
+MD033:
+  allowed_elements:
+    - br # Line breaks for formatting
+    - sub # Subscript text
+    - sup # Superscript text
+    - details # Collapsible content sections
+    - summary # Summary for details elements
+    - kbd # Keyboard input styling
+    - mark # Highlighted text
+
+# MD024: Multiple headings with the same content
+# Allow duplicate headings in different sections for structured docs
+MD024:
+  allow_different_nesting: true # Allow same heading text at different levels
+  siblings_only: true # Only check sibling headings, allow duplicates in different sections
+
+# MD026: Trailing punctuation in heading
+# Allow question marks in headings for FAQ sections
+MD026:
+  punctuation: ".,;:" # Disallowed punctuation (removed ! and ?)
+
+# MD029: Ordered list item prefix - Use consistent numbering
+MD029:
+  style: "ordered" # Use 1. 2. 3. instead of 1. 1. 1.
+
+# MD035: Horizontal rule style - Consistent horizontal rule format
+MD035:
+  style: "---" # Use --- for horizontal rules
+
+# MD046: Code block style - Use consistent fenced code blocks
+MD046:
+  style: "fenced" # Use ``` instead of indented code blocks
+
+# MD048: Code fence style - Use consistent fence characters
+MD048:
+  style: "backtick" # Use ``` instead of ~~~
+
+# MD007: Unordered list indentation
+MD007:
+  indent: 2 # Use 2 spaces for list indentation
+  start_indented: false # Don't require indentation for first level
+
+# Disabled rules for technical documentation flexibility
+MD001: false # Heading levels - Allow skipping levels for complex docs
+MD012: false # Multiple consecutive blank lines - Allow for document structure
+MD022: false # Headings surrounded by blank lines - Allow flexibility
+MD032: false # Lists surrounded by blank lines - Allow flexibility
+MD034: false # Bare URL used - Allow bare URLs in technical docs
+MD060: false # Table column style - Allow flexible table formatting
