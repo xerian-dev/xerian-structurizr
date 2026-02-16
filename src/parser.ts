@@ -142,9 +142,10 @@ export function parseDocument(document: vscode.TextDocument): ParsedWorkspace {
 
             // Inside a view: parse autoLayout
             if (ctx === 'view') {
-                const layoutMatch = trimmed.match(/^autolayout\s+(tb|bt|lr|rl)\b/i);
+                const layoutMatch = trimmed.match(/^autolayout(?:\s+(tb|bt|lr|rl))?\b/i);
                 if (layoutMatch && views.length > 0) {
-                    views[views.length - 1].autoLayout = layoutMatch[1].toLowerCase() as ParsedView['autoLayout'];
+                    const direction = (layoutMatch[1] || 'tb').toLowerCase() as ParsedView['autoLayout'];
+                    views[views.length - 1].autoLayout = direction;
                 }
             }
         }
