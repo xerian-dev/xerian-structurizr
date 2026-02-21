@@ -24,7 +24,7 @@ jobs:
       - name: Run ESLint
         id: lint
         run: |
-          npm run lint 2>&1 | tee lint-output.txt
+          npm run lint 2>&1 | tee lint-output.txt || echo "LINT_FAILED=true" >> $GITHUB_ENV
         continue-on-error: true
 
       - run: npm run compile
@@ -136,5 +136,5 @@ jobs:
             }
 
       - name: Fail workflow if tests or lint failed
-        if: steps.test.outcome == 'failure' || steps.lint.outcome == 'failure'
+        if: steps.test.outcome == 'failure' || steps.lint.outcome == 'failure' || env.LINT_FAILED == 'true'
         run: exit 1
