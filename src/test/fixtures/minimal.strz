@@ -1,0 +1,5 @@
+workspace "Minimal" {
+  model {
+    user = person "User"
+  }
+}

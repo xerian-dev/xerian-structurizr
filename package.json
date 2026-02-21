@@ -68,6 +68,7 @@
     "@types/vscode": "^1.85.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "fast-check": "^4.5.3",
     "typescript": "^5.9.3"
   }
 }

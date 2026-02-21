@@ -1,0 +1,13 @@
+workspace "Nested" {
+  model {
+    system = softwareSystem "System" {
+      web = container "Web App"
+      db = container "Database"
+    }
+  }
+  views {
+    container system "Containers" {
+      include *
+    }
+  }
+}
