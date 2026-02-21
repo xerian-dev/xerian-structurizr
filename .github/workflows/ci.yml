@@ -24,7 +24,10 @@ jobs:
       - name: Run ESLint
         id: lint
         run: |
-          npm run lint 2>&1 | tee lint-output.txt || echo "LINT_FAILED=true" >> $GITHUB_ENV
+          npm run lint 2>&1 | tee lint-output.txt
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "LINT_FAILED=true" >> $GITHUB_ENV
+          fi
         continue-on-error: true
 
       - run: npm run compile
