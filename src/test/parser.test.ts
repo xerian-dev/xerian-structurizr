@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import * as path from "path";
-import { parseDocument } from "../parser";
+import { parseDocument, ParsedWorkspace } from "../parser";
 
 const sampleDir = path.resolve(__dirname, "..", "..", "test-samples");
 
@@ -100,11 +100,13 @@ suite("Parser", () => {
       assert.ok(ids.includes("u"));
       assert.ok(ids.includes("ss"));
 
-      const user = result.elements.find((e) => e.identifier === "u")!;
+      const user = result.elements.find((e) => e.identifier === "u");
+      assert.ok(user, "User element should exist");
       assert.strictEqual(user.type, "person");
       assert.strictEqual(user.name, "User");
 
-      const sys = result.elements.find((e) => e.identifier === "ss")!;
+      const sys = result.elements.find((e) => e.identifier === "ss");
+      assert.ok(sys, "System element should exist");
       assert.strictEqual(sys.type, "softwareSystem");
       assert.strictEqual(sys.name, "Software System");
     });
@@ -1737,14 +1739,14 @@ suite("Edge Cases and Error Handling Tests", () => {
       const doc = await openDslContent(content);
 
       // Parser should not crash with unmatched braces
-      let result: any;
+      let result: ParsedWorkspace | undefined;
       assert.doesNotThrow(() => {
         result = parseDocument(doc);
       }, "Parser should not throw on unmatched braces");
 
       // Should still parse the valid element
       assert.ok(result, "Parser should return a result");
-      const person = result.elements.find((e: any) => e.identifier === "u");
+      const person = result.elements.find((e) => e.identifier === "u");
       assert.ok(person, "Valid element should still be parsed");
     });
 
@@ -1765,7 +1767,7 @@ suite("Edge Cases and Error Handling Tests", () => {
       const doc = await openDslContent(content);
 
       // Parser should not crash with invalid autoLayout direction
-      let result: any;
+      let result: ParsedWorkspace | undefined;
       assert.doesNotThrow(() => {
         result = parseDocument(doc);
       }, "Parser should not throw on invalid autoLayout direction");
