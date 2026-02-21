@@ -1,0 +1,26 @@
+workspace "Complex" {
+  model {
+    system = softwareSystem "System" {
+      web = container "Web App" {
+        controller = component "Controller"
+        service = component "Service"
+      }
+      db = container "Database"
+    }
+    user = person "User"
+    user -> system "Uses"
+  }
+  views {
+    systemContext system "Context" {
+      include *
+      autoLayout lr
+    }
+    container system "Containers" {
+      include *
+      autoLayout tb
+    }
+    component web "Components" {
+      include *
+    }
+  }
+}
