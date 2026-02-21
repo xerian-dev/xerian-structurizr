@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import * as path from "path";
+import { openDslContent, cleanupDocuments } from "./helpers/diagnosticHelpers";
 
 const sampleDir = path.resolve(__dirname, "..", "..", "test-samples");
 
@@ -27,17 +28,8 @@ async function openDslDocument(filePath: string): Promise<vscode.TextDocument> {
   return doc;
 }
 
-async function openDslContent(content: string): Promise<vscode.TextDocument> {
-  const doc = await vscode.workspace.openTextDocument({
-    language: "structurizr",
-    content,
-  });
-  await vscode.window.showTextDocument(doc);
-  return doc;
-}
-
 teardown(async () => {
-  await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+  await cleanupDocuments();
 });
 
 suite("Diagnostics", () => {
