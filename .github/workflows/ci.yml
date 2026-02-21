@@ -22,7 +22,10 @@ jobs:
       - run: npm ci
 
       - name: Run ESLint
-        run: npm run lint
+        id: lint
+        run: |
+          npm run lint 2>&1 | tee lint-output.txt
+        continue-on-error: true
 
       - run: npm run compile
 
@@ -35,44 +38,65 @@ jobs:
       - name: Generate test report
         if: always()
         run: |
-          echo "## Test Results 🧪" > test-report.md
+          echo "## CI Results 🔍" > test-report.md
           echo "" >> test-report.md
+
+          # Lint results
+          if [ -f lint-output.txt ]; then
+            if grep -q "✖" lint-output.txt; then
+              PROBLEMS=$(grep -oP '\d+(?= problems?)' lint-output.txt | tail -1)
+              echo "⚠️ **ESLint found $PROBLEMS issue(s)**" >> test-report.md
+              echo "" >> test-report.md
+              echo "<details><summary>View lint issues</summary>" >> test-report.md
+              echo "" >> test-report.md
+              echo "\`\`\`" >> test-report.md
+              cat lint-output.txt >> test-report.md
+              echo "\`\`\`" >> test-report.md
+              echo "</details>" >> test-report.md
+              echo "" >> test-report.md
+            else
+              echo "✅ **No lint issues**" >> test-report.md
+              echo "" >> test-report.md
+            fi
+          fi
 
           # Extract test summary from output
-          if grep -q "passing" test-output.txt; then
-            PASSING=$(grep -oP '\d+(?= passing)' test-output.txt | tail -1)
-            echo "✅ **$PASSING tests passed**" >> test-report.md
-          fi
+          if [ -f test-output.txt ]; then
+            if grep -q "passing" test-output.txt; then
+              PASSING=$(grep -oP '\d+(?= passing)' test-output.txt | tail -1)
+              echo "✅ **$PASSING tests passed**" >> test-report.md
+            fi
 
-          if grep -q "failing" test-output.txt; then
-            FAILING=$(grep -oP '\d+(?= failing)' test-output.txt | tail -1)
-            echo "❌ **$FAILING tests failed**" >> test-report.md
+            if grep -q "failing" test-output.txt; then
+              FAILING=$(grep -oP '\d+(?= failing)' test-output.txt | tail -1)
+              echo "❌ **$FAILING tests failed**" >> test-report.md
+              echo "" >> test-report.md
+              echo "<details><summary>View failed tests</summary>" >> test-report.md
+              echo "" >> test-report.md
+              echo "\`\`\`" >> test-report.md
+              grep -A 50 "failing" test-output.txt | tail -n +2 >> test-report.md
+              echo "\`\`\`" >> test-report.md
+              echo "</details>" >> test-report.md
+            else
+              echo "" >> test-report.md
+              echo "All tests passed! 🎉" >> test-report.md
+            fi
+
+            # Extract test execution time
+            if grep -qP '\d+ passing \(\d+[ms]+\)' test-output.txt; then
+              TIME=$(grep -oP '\d+ passing \(\K[^)]+' test-output.txt | tail -1)
+              echo "" >> test-report.md
+              echo "⏱️ **Test execution time:** $TIME" >> test-report.md
+            fi
+
             echo "" >> test-report.md
-            echo "<details><summary>View failed tests</summary>" >> test-report.md
+            echo "<details><summary>View full test output</summary>" >> test-report.md
             echo "" >> test-report.md
             echo "\`\`\`" >> test-report.md
-            grep -A 50 "failing" test-output.txt | tail -n +2 >> test-report.md
+            cat test-output.txt >> test-report.md
             echo "\`\`\`" >> test-report.md
             echo "</details>" >> test-report.md
-          else
-            echo "" >> test-report.md
-            echo "All tests passed! 🎉" >> test-report.md
           fi
-
-          # Extract test execution time
-          if grep -qP '\d+ passing \(\d+[ms]+\)' test-output.txt; then
-            TIME=$(grep -oP '\d+ passing \(\K[^)]+' test-output.txt | tail -1)
-            echo "" >> test-report.md
-            echo "⏱️ **Test execution time:** $TIME" >> test-report.md
-          fi
-
-          echo "" >> test-report.md
-          echo "<details><summary>View full test output</summary>" >> test-report.md
-          echo "" >> test-report.md
-          echo "\`\`\`" >> test-report.md
-          cat test-output.txt >> test-report.md
-          echo "\`\`\`" >> test-report.md
-          echo "</details>" >> test-report.md
 
       - name: Comment PR with test results
         if: always()
@@ -91,7 +115,7 @@ jobs:
 
             const botComment = comments.find(comment => 
               comment.user.type === 'Bot' && 
-              comment.body.includes('Test Results 🧪')
+              comment.body.includes('CI Results 🔍')
             );
 
             // Update or create comment
@@ -111,6 +135,6 @@ jobs:
               });
             }
 
-      - name: Fail workflow if tests failed
-        if: steps.test.outcome == 'failure'
+      - name: Fail workflow if tests or lint failed
+        if: steps.test.outcome == 'failure' || steps.lint.outcome == 'failure'
         run: exit 1
