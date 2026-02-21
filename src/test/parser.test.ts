@@ -736,6 +736,375 @@ suite("Individual Parser Rules", () => {
   });
 });
 
+suite("Nested Structure Tests", () => {
+  suite("Two-level nesting", () => {
+    test("container nested in softwareSystem", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web App"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 elements total
+      assert.strictEqual(result.elements.length, 2);
+
+      // Find the system and container
+      const system = result.elements.find((e) => e.identifier === "sys");
+      const container = result.elements.find((e) => e.identifier === "web");
+
+      assert.ok(system, "System element not found");
+      assert.ok(container, "Container element not found");
+
+      // Verify types
+      assert.strictEqual(system.type, "softwareSystem");
+      assert.strictEqual(container.type, "container");
+
+      // Verify both elements are parsed correctly
+      assert.strictEqual(system.name, "System");
+      assert.strictEqual(container.name, "Web App");
+    });
+
+    test("component nested in container", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web" {',
+        '        ctrl = component "Controller"',
+        "      }",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 3 elements total
+      assert.strictEqual(result.elements.length, 3);
+
+      // Find the container and component
+      const container = result.elements.find((e) => e.identifier === "web");
+      const component = result.elements.find((e) => e.identifier === "ctrl");
+
+      assert.ok(container, "Container element not found");
+      assert.ok(component, "Component element not found");
+
+      // Verify types
+      assert.strictEqual(container.type, "container");
+      assert.strictEqual(component.type, "component");
+
+      // Verify both elements are parsed correctly
+      assert.strictEqual(container.name, "Web");
+      assert.strictEqual(component.name, "Controller");
+    });
+
+    test("multiple containers in one system", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web App"',
+        '      api = container "API"',
+        '      db = container "Database"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 4 elements total (1 system + 3 containers)
+      assert.strictEqual(result.elements.length, 4);
+
+      // Find the system
+      const system = result.elements.find((e) => e.identifier === "sys");
+      assert.ok(system, "System element not found");
+
+      // Verify all containers are parsed
+      const containers = result.elements.filter((e) => e.type === "container");
+      assert.strictEqual(containers.length, 3);
+
+      const containerIds = containers.map((c) => c.identifier);
+      assert.ok(containerIds.includes("web"));
+      assert.ok(containerIds.includes("api"));
+      assert.ok(containerIds.includes("db"));
+    });
+
+    test("multiple components in one container", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web" {',
+        '        ctrl = component "Controller"',
+        '        svc = component "Service"',
+        '        repo = component "Repository"',
+        "      }",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 5 elements total (1 system + 1 container + 3 components)
+      assert.strictEqual(result.elements.length, 5);
+
+      // Find the container
+      const container = result.elements.find((e) => e.identifier === "web");
+      assert.ok(container, "Container element not found");
+
+      // Verify all components are parsed
+      const components = result.elements.filter((e) => e.type === "component");
+      assert.strictEqual(components.length, 3);
+
+      const componentIds = components.map((c) => c.identifier);
+      assert.ok(componentIds.includes("ctrl"));
+      assert.ok(componentIds.includes("svc"));
+      assert.ok(componentIds.includes("repo"));
+    });
+  });
+
+  suite("Three-level nesting", () => {
+    test("system → container → component hierarchy", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web" {',
+        '        ctrl = component "Controller"',
+        '        svc = component "Service"',
+        "      }",
+        '      db = container "Database"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 5 elements total (1 system + 2 containers + 2 components)
+      assert.strictEqual(result.elements.length, 5);
+
+      // Find all elements
+      const system = result.elements.find((e) => e.identifier === "sys");
+      const webContainer = result.elements.find((e) => e.identifier === "web");
+      const dbContainer = result.elements.find((e) => e.identifier === "db");
+      const controller = result.elements.find((e) => e.identifier === "ctrl");
+      const service = result.elements.find((e) => e.identifier === "svc");
+
+      assert.ok(system, "System element not found");
+      assert.ok(webContainer, "Web container not found");
+      assert.ok(dbContainer, "Database container not found");
+      assert.ok(controller, "Controller component not found");
+      assert.ok(service, "Service component not found");
+
+      // Verify types at each level
+      assert.strictEqual(system.type, "softwareSystem");
+      assert.strictEqual(webContainer.type, "container");
+      assert.strictEqual(dbContainer.type, "container");
+      assert.strictEqual(controller.type, "component");
+      assert.strictEqual(service.type, "component");
+
+      // Verify all elements are parsed with correct names
+      assert.strictEqual(system.name, "System");
+      assert.strictEqual(webContainer.name, "Web");
+      assert.strictEqual(dbContainer.name, "Database");
+      assert.strictEqual(controller.name, "Controller");
+      assert.strictEqual(service.name, "Service");
+    });
+  });
+
+  suite("Deployment and group nesting", () => {
+    test("deploymentNode containing infrastructureNode", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    node = deploymentNode "Server" {',
+        '      lb = infrastructureNode "Load Balancer"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 elements total
+      assert.strictEqual(result.elements.length, 2);
+
+      // Find the deployment node and infrastructure node
+      const deploymentNode = result.elements.find(
+        (e) => e.identifier === "node",
+      );
+      const infraNode = result.elements.find((e) => e.identifier === "lb");
+
+      assert.ok(deploymentNode, "Deployment node not found");
+      assert.ok(infraNode, "Infrastructure node not found");
+
+      // Verify types
+      assert.strictEqual(deploymentNode.type, "deploymentNode");
+      assert.strictEqual(infraNode.type, "infrastructureNode");
+
+      // Verify both elements are parsed correctly
+      assert.strictEqual(deploymentNode.name, "Server");
+      assert.strictEqual(infraNode.name, "Load Balancer");
+    });
+
+    test("group containing multiple elements", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    group "Backend Services" {',
+        '      api = softwareSystem "API"',
+        '      db = softwareSystem "Database"',
+        '      cache = softwareSystem "Cache"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 4 elements total (1 group + 3 systems)
+      assert.strictEqual(result.elements.length, 4);
+
+      // Find the group
+      const group = result.elements.find((e) => e.type === "group");
+      assert.ok(group, "Group element not found");
+      assert.strictEqual(group.name, "Backend Services");
+
+      // Verify all systems are parsed
+      const systems = result.elements.filter(
+        (e) => e.type === "softwareSystem",
+      );
+      assert.strictEqual(systems.length, 3);
+
+      const systemIds = systems.map((s) => s.identifier);
+      assert.ok(systemIds.includes("api"));
+      assert.ok(systemIds.includes("db"));
+      assert.ok(systemIds.includes("cache"));
+    });
+  });
+
+  suite("Line number tracking in nested structures", () => {
+    test("line numbers correct at all nesting levels", async () => {
+      const content = [
+        'workspace "Test" {', // line 0
+        "  model {", // line 1
+        '    sys = softwareSystem "System" {', // line 2
+        '      web = container "Web" {', // line 3
+        '        ctrl = component "Controller"', // line 4
+        '        svc = component "Service"', // line 5
+        "      }", // line 6
+        '      db = container "Database"', // line 7
+        "    }", // line 8
+        "  }", // line 9
+        "}", // line 10
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Find all elements
+      const system = result.elements.find((e) => e.identifier === "sys");
+      const webContainer = result.elements.find((e) => e.identifier === "web");
+      const dbContainer = result.elements.find((e) => e.identifier === "db");
+      const controller = result.elements.find((e) => e.identifier === "ctrl");
+      const service = result.elements.find((e) => e.identifier === "svc");
+
+      assert.ok(system, "System element not found");
+      assert.ok(webContainer, "Web container not found");
+      assert.ok(dbContainer, "Database container not found");
+      assert.ok(controller, "Controller component not found");
+      assert.ok(service, "Service component not found");
+
+      // Verify line numbers match declaration lines
+      assert.strictEqual(system.line, 2, "System line number incorrect");
+      assert.strictEqual(
+        webContainer.line,
+        3,
+        "Web container line number incorrect",
+      );
+      assert.strictEqual(
+        controller.line,
+        4,
+        "Controller line number incorrect",
+      );
+      assert.strictEqual(service.line, 5, "Service line number incorrect");
+      assert.strictEqual(
+        dbContainer.line,
+        7,
+        "Database container line number incorrect",
+      );
+    });
+
+    test("line numbers correct in deployment node nesting", async () => {
+      const content = [
+        'workspace "Test" {', // line 0
+        "  model {", // line 1
+        '    node = deploymentNode "Server" {', // line 2
+        '      lb = infrastructureNode "Load Balancer"', // line 3
+        "    }", // line 4
+        "  }", // line 5
+        "}", // line 6
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      const deploymentNode = result.elements.find(
+        (e) => e.identifier === "node",
+      );
+      const infraNode = result.elements.find((e) => e.identifier === "lb");
+
+      assert.ok(deploymentNode, "Deployment node not found");
+      assert.ok(infraNode, "Infrastructure node not found");
+
+      assert.strictEqual(
+        deploymentNode.line,
+        2,
+        "Deployment node line number incorrect",
+      );
+      assert.strictEqual(
+        infraNode.line,
+        3,
+        "Infrastructure node line number incorrect",
+      );
+    });
+
+    test("line numbers correct in group nesting", async () => {
+      const content = [
+        'workspace "Test" {', // line 0
+        "  model {", // line 1
+        '    group "Backend" {', // line 2
+        '      api = softwareSystem "API"', // line 3
+        '      db = softwareSystem "Database"', // line 4
+        "    }", // line 5
+        "  }", // line 6
+        "}", // line 7
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      const group = result.elements.find((e) => e.type === "group");
+      const api = result.elements.find((e) => e.identifier === "api");
+      const db = result.elements.find((e) => e.identifier === "db");
+
+      assert.ok(group, "Group not found");
+      assert.ok(api, "API system not found");
+      assert.ok(db, "Database system not found");
+
+      assert.strictEqual(group.line, 2, "Group line number incorrect");
+      assert.strictEqual(api.line, 3, "API line number incorrect");
+      assert.strictEqual(db.line, 4, "Database line number incorrect");
+    });
+  });
+});
+
 suite("fast-check verification", () => {
   test("fast-check integration works", async () => {
     const fc = await import("fast-check");
