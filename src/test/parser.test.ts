@@ -1612,3 +1612,399 @@ suite("fast-check verification", () => {
     );
   });
 });
+
+suite("Edge Cases and Error Handling Tests", () => {
+  // Tests that verify the parser handles edge cases and malformed input gracefully
+  // The parser is designed as a permissive extractor, not a validator
+  // It should handle malformed input without crashing and return valid structures
+
+  suite("Missing identifier tests", () => {
+    // Tests for elements without identifiers or names
+
+    test("element without identifier uses name as identifier", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    person "User"',
+        '    softwareSystem "System"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 elements
+      assert.strictEqual(result.elements.length, 2);
+
+      // Find the person element
+      const person = result.elements.find((e) => e.type === "person");
+      assert.ok(person, "Person element not found");
+      assert.strictEqual(person.name, "User");
+      // Identifier should be the name with spaces removed
+      assert.strictEqual(person.identifier, "User");
+
+      // Find the system element
+      const system = result.elements.find((e) => e.type === "softwareSystem");
+      assert.ok(system, "System element not found");
+      assert.strictEqual(system.name, "System");
+      assert.strictEqual(system.identifier, "System");
+    });
+
+    test("element without identifier or name graceful handling", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User"',
+        "    softwareSystem",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should not crash and should parse the valid element
+      assert.ok(result, "Parser should return a result");
+
+      // Should have at least the valid person element
+      const person = result.elements.find((e) => e.identifier === "u");
+      assert.ok(person, "Valid person element should be parsed");
+      assert.strictEqual(person.name, "User");
+    });
+
+    test("verify no empty identifiers in parsed results", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User"',
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web App"',
+        "    }",
+        '    person "Another User"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Verify no elements have empty identifiers
+      const emptyIds = result.elements.filter((e) => e.identifier === "");
+      assert.strictEqual(
+        emptyIds.length,
+        0,
+        `Found elements with empty identifiers on lines: ${emptyIds.map((e) => e.line + 1).join(", ")}`,
+      );
+
+      // All elements should have identifiers
+      result.elements.forEach((e) => {
+        assert.ok(
+          e.identifier && e.identifier.length > 0,
+          `Element on line ${e.line + 1} has empty identifier`,
+        );
+      });
+    });
+  });
+
+  suite("Malformed input tests", () => {
+    // Tests for DSL with syntax errors or invalid constructs
+
+    test("DSL with only comments returns empty workspace", async () => {
+      const content = [
+        "// This is a comment",
+        "// Another comment",
+        "/* Block comment */",
+        "// workspace would go here",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should not crash
+      assert.ok(result, "Parser should return a result");
+
+      // Should return empty workspace
+      assert.strictEqual(result.elements.length, 0);
+      assert.strictEqual(result.relationships.length, 0);
+      assert.strictEqual(result.views.length, 0);
+    });
+
+    test("DSL with unmatched braces no crash", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User"',
+        "    // Missing closing brace for model",
+        "  // Missing closing brace for workspace",
+      ].join("\n");
+      const doc = await openDslContent(content);
+
+      // Parser should not crash with unmatched braces
+      let result: any;
+      assert.doesNotThrow(() => {
+        result = parseDocument(doc);
+      }, "Parser should not throw on unmatched braces");
+
+      // Should still parse the valid element
+      assert.ok(result, "Parser should return a result");
+      const person = result.elements.find((e: any) => e.identifier === "u");
+      assert.ok(person, "Valid element should still be parsed");
+    });
+
+    test("autoLayout with invalid direction graceful handling", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User"',
+        "  }",
+        "  views {",
+        '    systemLandscape "Key" {',
+        "      include *",
+        "      autoLayout invalid",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+
+      // Parser should not crash with invalid autoLayout direction
+      let result: any;
+      assert.doesNotThrow(() => {
+        result = parseDocument(doc);
+      }, "Parser should not throw on invalid autoLayout direction");
+
+      // Should still parse the view
+      assert.ok(result, "Parser should return a result");
+      assert.strictEqual(result.views.length, 1);
+
+      // Invalid direction defaults to tb (the parser regex matches 'autoLayout'
+      // and uses the default when no valid direction is captured)
+      assert.strictEqual(result.views[0].autoLayout, "tb");
+    });
+
+    test("verify no unhandled exceptions for all malformed input", async () => {
+      const malformedInputs = [
+        // Missing quotes
+        'workspace Test { model { u = person "User" } }',
+        // Incomplete element declaration
+        'workspace "Test" { model { person } }',
+        // Invalid relationship syntax
+        'workspace "Test" { model { a = person "A" b = person "B" a > b } }',
+        // Nested braces without proper structure
+        'workspace "Test" { { { model { } } } }',
+        // Mixed valid and invalid content
+        'workspace "Test" { model { u = person "User" invalid syntax here sys = softwareSystem "Sys" } }',
+      ];
+
+      for (const content of malformedInputs) {
+        const doc = await openDslContent(content);
+
+        // Parser should not throw exceptions for any malformed input
+        assert.doesNotThrow(
+          () => {
+            const result = parseDocument(doc);
+            assert.ok(result, "Parser should return a result");
+          },
+          `Parser should not throw on malformed input: ${content.substring(0, 50)}...`,
+        );
+      }
+    });
+  });
+
+  suite("Undefined reference tests", () => {
+    // Tests for relationships and views referencing non-existent identifiers
+
+    test("relationship with undefined source/target still parses structure", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    a = softwareSystem "System A"',
+        "    // b is not defined",
+        '    a -> b "Uses undefined target"',
+        '    c -> a "Undefined source uses defined target"',
+        '    x -> y "Both undefined"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should not crash and should parse all relationships
+      assert.ok(result, "Parser should return a result");
+
+      // Should have 1 element (only 'a' is defined)
+      assert.strictEqual(result.elements.length, 1);
+      assert.strictEqual(result.elements[0].identifier, "a");
+
+      // Should have 3 relationships (parser doesn't validate references)
+      assert.strictEqual(result.relationships.length, 3);
+
+      // Verify first relationship (a -> b)
+      const rel1 = result.relationships.find(
+        (r) => r.source === "a" && r.target === "b",
+      );
+      assert.ok(rel1, "Relationship with undefined target should be parsed");
+      assert.strictEqual(rel1.description, "Uses undefined target");
+
+      // Verify second relationship (c -> a)
+      const rel2 = result.relationships.find(
+        (r) => r.source === "c" && r.target === "a",
+      );
+      assert.ok(rel2, "Relationship with undefined source should be parsed");
+      assert.strictEqual(
+        rel2.description,
+        "Undefined source uses defined target",
+      );
+
+      // Verify third relationship (x -> y)
+      const rel3 = result.relationships.find(
+        (r) => r.source === "x" && r.target === "y",
+      );
+      assert.ok(rel3, "Relationship with both undefined should be parsed");
+      assert.strictEqual(rel3.description, "Both undefined");
+    });
+
+    test("view with undefined scope still parses structure", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System"',
+        "  }",
+        "  views {",
+        '    systemContext sys "ValidScope" {',
+        "      include *",
+        "    }",
+        '    systemContext undefinedSystem "InvalidScope" {',
+        "      include *",
+        "    }",
+        '    container nonExistent "UndefinedContainer" {',
+        "      include *",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should not crash
+      assert.ok(result, "Parser should return a result");
+
+      // Should have 1 element
+      assert.strictEqual(result.elements.length, 1);
+
+      // Should have 3 views (parser doesn't validate scope references)
+      assert.strictEqual(result.views.length, 3);
+
+      // Verify first view (valid scope)
+      const view1 = result.views.find(
+        (v) => v.type === "systemContext" && v.scope === "sys",
+      );
+      assert.ok(view1, "View with valid scope should be parsed");
+      assert.strictEqual(view1.key, "ValidScope");
+
+      // Verify second view (undefined scope)
+      const view2 = result.views.find(
+        (v) => v.type === "systemContext" && v.scope === "undefinedSystem",
+      );
+      assert.ok(view2, "View with undefined scope should be parsed");
+      assert.strictEqual(view2.key, "InvalidScope");
+
+      // Verify third view (undefined container scope)
+      const view3 = result.views.find(
+        (v) => v.type === "container" && v.scope === "nonExistent",
+      );
+      assert.ok(view3, "Container view with undefined scope should be parsed");
+      assert.strictEqual(view3.key, "UndefinedContainer");
+    });
+  });
+
+  suite("Multi-line and escaped quote tests", () => {
+    // Tests for element declarations spanning multiple lines and escaped quotes
+
+    test("element declaration spanning multiple lines", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User" "A user',
+        "      who spans multiple",
+        '      lines"',
+        '    sys = softwareSystem "System"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should handle multi-line declarations
+      // Note: The current parser implementation uses line-by-line regex matching,
+      // so multi-line strings may not be fully supported. This test documents
+      // the current behavior.
+      assert.ok(result, "Parser should return a result");
+
+      // Should parse at least the single-line element
+      const system = result.elements.find((e) => e.identifier === "sys");
+      assert.ok(system, "Single-line element should be parsed");
+      assert.strictEqual(system.name, "System");
+    });
+
+    test("string literals with escaped quotes", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User" "Description with \\\\"escaped\\\\" quotes"',
+        '    sys = softwareSystem "System" "It\'s a system"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should handle escaped quotes
+      // Note: The current parser uses simple regex patterns that may not
+      // fully handle escaped quotes. This test documents the current behavior.
+      assert.ok(result, "Parser should return a result");
+
+      // Should parse elements even if escaped quotes aren't fully handled
+      assert.ok(
+        result.elements.length > 0,
+        "Should parse at least some elements",
+      );
+
+      // Verify elements are parsed
+      const user = result.elements.find((e) => e.identifier === "u");
+      const system = result.elements.find((e) => e.identifier === "sys");
+
+      // At minimum, the parser should not crash
+      assert.ok(user || system, "At least one element should be parsed");
+    });
+
+    test("element with description containing special characters", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    u = person "User" "Description with: colons, commas, and (parentheses)"',
+        '    sys = softwareSystem "System" "Uses HTTP/HTTPS protocols"',
+        '    api = softwareSystem "API" "Handles JSON & XML data"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Parser should handle special characters in descriptions
+      assert.ok(result, "Parser should return a result");
+      assert.strictEqual(result.elements.length, 3);
+
+      // Verify elements are parsed correctly
+      const user = result.elements.find((e) => e.identifier === "u");
+      const system = result.elements.find((e) => e.identifier === "sys");
+      const api = result.elements.find((e) => e.identifier === "api");
+
+      assert.ok(user, "User element should be parsed");
+      assert.strictEqual(user.name, "User");
+
+      assert.ok(system, "System element should be parsed");
+      assert.strictEqual(system.name, "System");
+
+      assert.ok(api, "API element should be parsed");
+      assert.strictEqual(api.name, "API");
+    });
+  });
+});
