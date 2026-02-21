@@ -1412,6 +1412,188 @@ suite("Context-Aware Parsing Tests", () => {
   });
 });
 
+suite("Progressive Complexity Tests", () => {
+  // Tests that validate parser behavior from simple to complex scenarios
+  // using test files with increasing complexity levels
+
+  const fixturesDir = path.resolve(
+    __dirname,
+    "..",
+    "..",
+    "src",
+    "test",
+    "fixtures",
+  );
+
+  test("minimal complexity: single element, no relationships, no views", async () => {
+    const doc = await openDslDocument(path.join(fixturesDir, "minimal.strz"));
+    const result = parseDocument(doc);
+
+    // Verify workspace name
+    assert.strictEqual(result.name, "Minimal");
+
+    // Should have exactly one element
+    assert.strictEqual(result.elements.length, 1);
+    assert.strictEqual(result.elements[0].type, "person");
+    assert.strictEqual(result.elements[0].identifier, "user");
+    assert.strictEqual(result.elements[0].name, "User");
+
+    // Should have no relationships
+    assert.strictEqual(result.relationships.length, 0);
+
+    // Should have no views
+    assert.strictEqual(result.views.length, 0);
+  });
+
+  test("simple complexity: multiple elements, basic relationships, one view", async () => {
+    const doc = await openDslDocument(path.join(fixturesDir, "simple.strz"));
+    const result = parseDocument(doc);
+
+    // Verify workspace name
+    assert.strictEqual(result.name, "Simple");
+
+    // Should have 2 elements
+    assert.strictEqual(result.elements.length, 2);
+
+    // Verify elements
+    const user = result.elements.find((e) => e.identifier === "user");
+    const system = result.elements.find((e) => e.identifier === "system");
+
+    assert.ok(user, "User element not found");
+    assert.strictEqual(user.type, "person");
+    assert.strictEqual(user.name, "User");
+
+    assert.ok(system, "System element not found");
+    assert.strictEqual(system.type, "softwareSystem");
+    assert.strictEqual(system.name, "System");
+
+    // Should have 1 relationship
+    assert.strictEqual(result.relationships.length, 1);
+    assert.strictEqual(result.relationships[0].source, "user");
+    assert.strictEqual(result.relationships[0].target, "system");
+    assert.strictEqual(result.relationships[0].description, "Uses");
+
+    // Should have 1 view
+    assert.strictEqual(result.views.length, 1);
+    assert.strictEqual(result.views[0].type, "systemLandscape");
+    assert.strictEqual(result.views[0].key, "Landscape");
+  });
+
+  test("nested complexity: two-level nesting with correct parent-child associations", async () => {
+    const doc = await openDslDocument(path.join(fixturesDir, "nested.strz"));
+    const result = parseDocument(doc);
+
+    // Verify workspace name
+    assert.strictEqual(result.name, "Nested");
+
+    // Should have 3 elements (1 system + 2 containers)
+    assert.strictEqual(result.elements.length, 3);
+
+    // Verify system element
+    const system = result.elements.find((e) => e.identifier === "system");
+    assert.ok(system, "System element not found");
+    assert.strictEqual(system.type, "softwareSystem");
+    assert.strictEqual(system.name, "System");
+
+    // Verify container elements
+    const web = result.elements.find((e) => e.identifier === "web");
+    const db = result.elements.find((e) => e.identifier === "db");
+
+    assert.ok(web, "Web container not found");
+    assert.strictEqual(web.type, "container");
+    assert.strictEqual(web.name, "Web App");
+
+    assert.ok(db, "Database container not found");
+    assert.strictEqual(db.type, "container");
+    assert.strictEqual(db.name, "Database");
+
+    // Should have 1 view
+    assert.strictEqual(result.views.length, 1);
+    assert.strictEqual(result.views[0].type, "container");
+    assert.strictEqual(result.views[0].scope, "system");
+    assert.strictEqual(result.views[0].key, "Containers");
+  });
+
+  test("complex complexity: three-level nesting, multiple views, autoLayout directives", async () => {
+    const doc = await openDslDocument(path.join(fixturesDir, "complex.strz"));
+    const result = parseDocument(doc);
+
+    // Verify workspace name
+    assert.strictEqual(result.name, "Complex");
+
+    // Should have 6 elements (1 system + 2 containers + 2 components + 1 person)
+    assert.strictEqual(result.elements.length, 6);
+
+    // Verify system element
+    const system = result.elements.find((e) => e.identifier === "system");
+    assert.ok(system, "System element not found");
+    assert.strictEqual(system.type, "softwareSystem");
+    assert.strictEqual(system.name, "System");
+
+    // Verify container elements
+    const web = result.elements.find((e) => e.identifier === "web");
+    const db = result.elements.find((e) => e.identifier === "db");
+
+    assert.ok(web, "Web container not found");
+    assert.strictEqual(web.type, "container");
+    assert.strictEqual(web.name, "Web App");
+
+    assert.ok(db, "Database container not found");
+    assert.strictEqual(db.type, "container");
+    assert.strictEqual(db.name, "Database");
+
+    // Verify component elements (three-level nesting)
+    const controller = result.elements.find(
+      (e) => e.identifier === "controller",
+    );
+    const service = result.elements.find((e) => e.identifier === "service");
+
+    assert.ok(controller, "Controller component not found");
+    assert.strictEqual(controller.type, "component");
+    assert.strictEqual(controller.name, "Controller");
+
+    assert.ok(service, "Service component not found");
+    assert.strictEqual(service.type, "component");
+    assert.strictEqual(service.name, "Service");
+
+    // Verify person element
+    const user = result.elements.find((e) => e.identifier === "user");
+    assert.ok(user, "User element not found");
+    assert.strictEqual(user.type, "person");
+    assert.strictEqual(user.name, "User");
+
+    // Should have 1 relationship
+    assert.strictEqual(result.relationships.length, 1);
+    assert.strictEqual(result.relationships[0].source, "user");
+    assert.strictEqual(result.relationships[0].target, "system");
+    assert.strictEqual(result.relationships[0].description, "Uses");
+
+    // Should have 3 views
+    assert.strictEqual(result.views.length, 3);
+
+    // Verify systemContext view with autoLayout lr
+    const contextView = result.views.find((v) => v.type === "systemContext");
+    assert.ok(contextView, "SystemContext view not found");
+    assert.strictEqual(contextView.scope, "system");
+    assert.strictEqual(contextView.key, "Context");
+    assert.strictEqual(contextView.autoLayout, "lr");
+
+    // Verify container view with autoLayout tb
+    const containerView = result.views.find((v) => v.type === "container");
+    assert.ok(containerView, "Container view not found");
+    assert.strictEqual(containerView.scope, "system");
+    assert.strictEqual(containerView.key, "Containers");
+    assert.strictEqual(containerView.autoLayout, "tb");
+
+    // Verify component view
+    const componentView = result.views.find((v) => v.type === "component");
+    assert.ok(componentView, "Component view not found");
+    assert.strictEqual(componentView.scope, "web");
+    assert.strictEqual(componentView.key, "Components");
+    assert.strictEqual(componentView.autoLayout, undefined);
+  });
+});
+
 suite("fast-check verification", () => {
   test("fast-check integration works", async () => {
     const fc = await import("fast-check");
