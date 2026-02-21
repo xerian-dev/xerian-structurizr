@@ -1105,6 +1105,313 @@ suite("Nested Structure Tests", () => {
   });
 });
 
+suite("Context-Aware Parsing Tests", () => {
+  // Tests that verify keywords with multiple meanings are interpreted correctly
+  // based on their location in the DSL (model block vs views block)
+
+  suite("Keyword disambiguation", () => {
+    test('"container" in model block is parsed as element', async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web App"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 elements: system and container
+      assert.strictEqual(result.elements.length, 2);
+
+      // Find the container element
+      const container = result.elements.find((e) => e.identifier === "web");
+      assert.ok(container, "Container element not found");
+      assert.strictEqual(container.type, "container");
+      assert.strictEqual(container.identifier, "web");
+      assert.strictEqual(container.name, "Web App");
+    });
+
+    test('"container" in views block is parsed as view', async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web App"',
+        "    }",
+        "  }",
+        "  views {",
+        '    container sys "ContainerView" {',
+        "      include *",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 1 view
+      assert.strictEqual(result.views.length, 1);
+
+      // Verify the view is a container view
+      assert.strictEqual(result.views[0].type, "container");
+      assert.strictEqual(result.views[0].scope, "sys");
+      assert.strictEqual(result.views[0].key, "ContainerView");
+
+      // Should still have 2 elements (system and container from model block)
+      assert.strictEqual(result.elements.length, 2);
+    });
+
+    test('"component" in model block is parsed as element', async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web" {',
+        '        ctrl = component "Controller"',
+        "      }",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 3 elements: system, container, and component
+      assert.strictEqual(result.elements.length, 3);
+
+      // Find the component element
+      const component = result.elements.find((e) => e.identifier === "ctrl");
+      assert.ok(component, "Component element not found");
+      assert.strictEqual(component.type, "component");
+      assert.strictEqual(component.identifier, "ctrl");
+      assert.strictEqual(component.name, "Controller");
+    });
+
+    test('"component" in views block is parsed as view', async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web" {',
+        '        ctrl = component "Controller"',
+        "      }",
+        "    }",
+        "  }",
+        "  views {",
+        '    component web "ComponentView" {',
+        "      include *",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 1 view
+      assert.strictEqual(result.views.length, 1);
+
+      // Verify the view is a component view
+      assert.strictEqual(result.views[0].type, "component");
+      assert.strictEqual(result.views[0].scope, "web");
+      assert.strictEqual(result.views[0].key, "ComponentView");
+
+      // Should still have 3 elements (system, container, component from model block)
+      assert.strictEqual(result.elements.length, 3);
+    });
+  });
+
+  suite("Relationship scope", () => {
+    test("relationships in model block are parsed", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    a = softwareSystem "System A"',
+        '    b = softwareSystem "System B"',
+        '    c = softwareSystem "System C"',
+        '    a -> b "Uses" "HTTPS"',
+        '    b -> c "Sends data to"',
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 relationships
+      assert.strictEqual(result.relationships.length, 2);
+
+      // Verify first relationship
+      assert.strictEqual(result.relationships[0].source, "a");
+      assert.strictEqual(result.relationships[0].target, "b");
+      assert.strictEqual(result.relationships[0].description, "Uses");
+      assert.strictEqual(result.relationships[0].technology, "HTTPS");
+
+      // Verify second relationship
+      assert.strictEqual(result.relationships[1].source, "b");
+      assert.strictEqual(result.relationships[1].target, "c");
+      assert.strictEqual(result.relationships[1].description, "Sends data to");
+    });
+
+    test("relationship-like syntax outside model block is ignored", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    a = softwareSystem "System A"',
+        '    b = softwareSystem "System B"',
+        '    a -> b "Valid relationship"',
+        "  }",
+        "  views {",
+        '    systemLandscape "Landscape" {',
+        "      include *",
+        "      // This arrow syntax in views should not be parsed as a relationship",
+        "      // a -> b",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should only have 1 relationship (from model block)
+      assert.strictEqual(result.relationships.length, 1);
+      assert.strictEqual(result.relationships[0].source, "a");
+      assert.strictEqual(result.relationships[0].target, "b");
+      assert.strictEqual(
+        result.relationships[0].description,
+        "Valid relationship",
+      );
+    });
+
+    test("relationships in nested model elements are parsed", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web"',
+        '      api = container "API"',
+        '      db = container "Database"',
+        '      web -> api "Calls"',
+        '      api -> db "Reads from"',
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should have 2 relationships
+      assert.strictEqual(result.relationships.length, 2);
+
+      // Verify relationships
+      const webToApi = result.relationships.find(
+        (r) => r.source === "web" && r.target === "api",
+      );
+      const apiToDb = result.relationships.find(
+        (r) => r.source === "api" && r.target === "db",
+      );
+
+      assert.ok(webToApi, "web -> api relationship not found");
+      assert.strictEqual(webToApi.description, "Calls");
+
+      assert.ok(apiToDb, "api -> db relationship not found");
+      assert.strictEqual(apiToDb.description, "Reads from");
+    });
+  });
+
+  suite("Element scope", () => {
+    test("elements in views block are not parsed as model elements", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System" {',
+        '      web = container "Web"',
+        "    }",
+        '    user = person "User"',
+        "  }",
+        "  views {",
+        '    container sys "ContainerView" {',
+        "      include *",
+        "      // View-specific directives should not create elements",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should only have 3 elements from model block (sys, web, user)
+      assert.strictEqual(result.elements.length, 3);
+
+      // Verify element identifiers
+      const elementIds = result.elements.map((e) => e.identifier);
+      assert.ok(elementIds.includes("sys"));
+      assert.ok(elementIds.includes("web"));
+      assert.ok(elementIds.includes("user"));
+
+      // Should have 1 view
+      assert.strictEqual(result.views.length, 1);
+    });
+
+    test("only model block elements are included in elements array", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    a = softwareSystem "System A"',
+        '    b = softwareSystem "System B"',
+        "  }",
+        "  views {",
+        '    systemLandscape "Landscape" {',
+        "      include *",
+        "    }",
+        '    systemContext a "Context" {',
+        "      include *",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should only have 2 elements from model block
+      assert.strictEqual(result.elements.length, 2);
+      assert.strictEqual(result.elements[0].identifier, "a");
+      assert.strictEqual(result.elements[1].identifier, "b");
+
+      // Should have 2 views
+      assert.strictEqual(result.views.length, 2);
+    });
+
+    test("views block with include directives does not create elements", async () => {
+      const content = [
+        'workspace "Test" {',
+        "  model {",
+        '    sys = softwareSystem "System"',
+        "  }",
+        "  views {",
+        '    systemContext sys "Context" {',
+        "      include *",
+        "      include sys",
+        "      autoLayout lr",
+        "    }",
+        "  }",
+        "}",
+      ].join("\n");
+      const doc = await openDslContent(content);
+      const result = parseDocument(doc);
+
+      // Should only have 1 element from model block
+      assert.strictEqual(result.elements.length, 1);
+      assert.strictEqual(result.elements[0].identifier, "sys");
+
+      // Should have 1 view
+      assert.strictEqual(result.views.length, 1);
+      assert.strictEqual(result.views[0].type, "systemContext");
+    });
+  });
+});
+
 suite("fast-check verification", () => {
   test("fast-check integration works", async () => {
     const fc = await import("fast-check");
