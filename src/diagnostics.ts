@@ -664,6 +664,14 @@ function checkContextAwarePlacement(
             vscode.DiagnosticSeverity.Error,
           ),
         );
+      } else if (currentContext === "styles") {
+        diagnostics.push(
+          new vscode.Diagnostic(
+            new vscode.Range(i, 0, i, lines[i].length),
+            "Invalid relationship placement (relationships belong in the model block, not styles)",
+            vscode.DiagnosticSeverity.Error,
+          ),
+        );
       }
     }
 
@@ -936,6 +944,32 @@ function checkAdditionalSyntax(
           ),
         );
       }
+
+      // Check for missing target after arrow (e.g., "u -> "description"")
+      const missingTargetPattern = /\w+\s*->\s*"/;
+      if (missingTargetPattern.test(trimmed)) {
+        const col = lines[i].indexOf("->");
+        diagnostics.push(
+          new vscode.Diagnostic(
+            new vscode.Range(i, col, i, lines[i].length),
+            "Missing target identifier in relationship",
+            vscode.DiagnosticSeverity.Error,
+          ),
+        );
+      }
+    }
+
+    // Check for invalid arrow syntax (e.g., using > instead of ->)
+    const invalidArrowPattern = /\w+\s+>\s+\w+/;
+    if (invalidArrowPattern.test(trimmed) && !trimmed.includes("->")) {
+      const col = lines[i].indexOf(">");
+      diagnostics.push(
+        new vscode.Diagnostic(
+          new vscode.Range(i, col, i, col + 1),
+          "Invalid relationship arrow syntax (use '->' instead of '>')",
+          vscode.DiagnosticSeverity.Error,
+        ),
+      );
     }
 
     // Check for invalid autoLayout directions
