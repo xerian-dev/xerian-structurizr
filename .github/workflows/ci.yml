@@ -21,6 +21,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Run ESLint
+        run: npm run lint
+
       - run: npm run compile
 
       - name: Run tests
@@ -54,6 +57,13 @@ jobs:
           else
             echo "" >> test-report.md
             echo "All tests passed! 🎉" >> test-report.md
+          fi
+
+          # Extract test execution time
+          if grep -qP '\d+ passing \(\d+[ms]+\)' test-output.txt; then
+            TIME=$(grep -oP '\d+ passing \(\K[^)]+' test-output.txt | tail -1)
+            echo "" >> test-report.md
+            echo "⏱️ **Test execution time:** $TIME" >> test-report.md
           fi
 
           echo "" >> test-report.md
