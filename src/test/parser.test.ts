@@ -120,6 +120,51 @@ suite('Parser', () => {
 		});
 	});
 
+	suite('autoLayout parsing', () => {
+		test('parses autoLayout lr from system-context.strz', async () => {
+			const doc = await openDslDocument(path.join(sampleDir, 'system-context.strz'));
+			const result = parseDocument(doc);
+			assert.strictEqual(result.views[0].autoLayout, 'lr');
+		});
+
+		test('parses autoLayout tb', async () => {
+			const content = [
+				'workspace "Test" {',
+				'  model {',
+				'    u = person "User"',
+				'  }',
+				'  views {',
+				'    systemLandscape "Key" {',
+				'      include *',
+				'      autoLayout tb',
+				'    }',
+				'  }',
+				'}',
+			].join('\n');
+			const doc = await openDslContent(content);
+			const result = parseDocument(doc);
+			assert.strictEqual(result.views[0].autoLayout, 'tb');
+		});
+
+		test('autoLayout is undefined when not specified', async () => {
+			const content = [
+				'workspace "Test" {',
+				'  model {',
+				'    u = person "User"',
+				'  }',
+				'  views {',
+				'    systemLandscape "Key" {',
+				'      include *',
+				'    }',
+				'  }',
+				'}',
+			].join('\n');
+			const doc = await openDslContent(content);
+			const result = parseDocument(doc);
+			assert.strictEqual(result.views[0].autoLayout, undefined);
+		});
+	});
+
 	suite('context-aware parsing', () => {
 		test('container in views is a view, not an element', async () => {
 			const content = [
