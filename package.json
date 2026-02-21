@@ -60,7 +60,7 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src/**/*.ts --max-warnings 0",
     "pretest": "npm run compile",
     "test": "vscode-test"
   },
