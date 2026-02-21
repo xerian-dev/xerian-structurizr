@@ -1,5 +1,7 @@
 # Structurizr DSL for VS Code
 
+[![CI](https://github.com/xerian-dev/xerian-structurizr/actions/workflows/ci.yml/badge.svg)](https://github.com/xerian-dev/xerian-structurizr/actions/workflows/ci.yml)
+
 A Visual Studio Code extension providing language support for the [Structurizr DSL](https://docs.structurizr.com/dsl) — the text-based language for defining C4 architecture models.
 
 ## Features
